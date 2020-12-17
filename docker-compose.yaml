@@ -1,0 +1,68 @@
+version: '3'
+
+services:
+
+  ### Graylog ###
+
+  mongo:
+    image: mongo:3
+
+  elasticsearch:
+    image: elasticsearch:6.8.5
+    environment:
+      http.host: 0.0.0.0
+      transport.host: localhost
+      network.host: 0.0.0.0
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  # When run first time:
+  #   - open http://127.0.0.1:9000/system/inputs
+  #   - launch GELF TCP input
+  graylog:
+    image: graylog/graylog:3.2
+    environment:
+      GRAYLOG_PASSWORD_SECRET: somepasswordpepper
+      # Password: admin
+      GRAYLOG_ROOT_PASSWORD_SHA2: 8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+      GRAYLOG_HTTP_EXTERNAL_URI: http://127.0.0.1:9000/
+    depends_on:
+      - mongo
+      - elasticsearch
+    ports:
+      # Graylog web interface and REST API
+      - 9000:9000
+      # Input
+      - 12201:12201/udp
+
+  ### Sentry ###
+
+  redis:
+    image: redis
+
+  pg:
+    image: postgres:11.2
+    hostname: pg
+    restart: on-failure
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: backoffice
+
+  sentry:
+    image: sentry
+    environment:
+      SENTRY_SECRET_KEY: 39k9bs(tq&bgyx8h4j6+xdhi6hv%!3ab-48iy*5bo12wmsdih!
+      SENTRY_REDIS_HOST: redis
+      SENTRY_POSTGRES_HOST: pg
+      SENTRY_DB_NAME: sentry
+      SENTRY_DB_USER: root
+      SENTRY_DB_PASSWORD: root
+    depends_on:
+      - redis
+      - pg
+    ports:
+      - 9001:9000
