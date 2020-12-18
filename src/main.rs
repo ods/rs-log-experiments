@@ -1,4 +1,4 @@
-use slog::{Drain, Fuse};
+use slog::{Drain, Fuse, Level};
 use slog_async::Async;
 use slog_gelf::Gelf;
 
@@ -14,6 +14,20 @@ impl DrainTee {
         D: Drain<Err = slog::Never, Ok = ()> + Send + 'static,
     {
         self.0.push(Async::default(drain).fuse());
+    }
+
+    pub fn term(mut self) -> anyhow::Result<Self> {
+        let decorator = slog_term::TermDecorator::new().stderr().build();
+        let term_drain = slog_term::FullFormat::new(decorator).build().fuse();
+        self.push(term_drain);
+        Ok(self)
+    }
+
+    pub fn graylog(mut self, url: &str) -> anyhow::Result<Self> {
+        let host = hostname::get()?;
+        let gelf_drain = Gelf::new(host.to_str().unwrap(), url)?.fuse();
+        self.push(gelf_drain);
+        Ok(self)
     }
 }
 
@@ -36,18 +50,13 @@ fn main() -> anyhow::Result<()> {
     std::env::set_var("RUST_BACKTRACE", "1");
     std::env::set_var("GRAYLOG_URL", "localhost:12201");
 
-    let mut drain_tee = DrainTee::default();
-
-    let decorator = slog_term::TermDecorator::new().stderr().build();
-    let term_drain = slog_term::FullFormat::new(decorator).build().fuse();
-    drain_tee.push(term_drain);
-
     let graylog_url = std::env::var("GRAYLOG_URL")?;
-    let host = hostname::get()?;
-    let gelf_drain = Gelf::new(host.to_str().unwrap(), &graylog_url)?.fuse();
-    drain_tee.push(gelf_drain);
+    let drain_tee = DrainTee::default().term()?.graylog(&graylog_url)?;
 
-    let logger = slog::Logger::root(drain_tee, slog::o!());
+    let logger = slog::Logger::root(
+        drain_tee.filter_level(Level::Info).fuse(),
+        slog::o!(),
+    );
     let log_guard = slog_scope::set_global_logger(logger);
 
     slog_scope::error!("Hello, slog_scope!");
