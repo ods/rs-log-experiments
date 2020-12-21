@@ -4,10 +4,22 @@ use logging::DrainTee;
 
 fn main() -> anyhow::Result<()> {
     std::env::set_var("RUST_BACKTRACE", "1");
+    std::env::set_var("ENVIRONMENT", "dev");
     std::env::set_var("GRAYLOG_URL", "localhost:12201");
+    std::env::set_var(
+        "SENTRY_URL",
+        "http://185b7a7e069f4ef0983c2467e79683b1@localhost:9001/1",
+    );
 
+    let environment = std::env::var("ENVIRONMENT")?;
     let graylog_url = std::env::var("GRAYLOG_URL")?;
-    let drain_tee = DrainTee::default().term()?.graylog(&graylog_url)?;
+    let sentry_url = std::env::var("SENTRY_URL")?;
+    let drain_tee = DrainTee::default()
+        .environment(&environment)
+        .version(env!("APP_VERSION"))
+        .term()?
+        .graylog(&graylog_url)?
+        .sentry(&sentry_url)?;
 
     let logger = slog::Logger::root(
         drain_tee.filter_level(slog::Level::Info).fuse(),

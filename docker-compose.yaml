@@ -55,6 +55,7 @@ services:
   sentry:
     image: sentry
     environment:
+      SENTRY_SINGLE_ORGANIZATION: "false"
       SENTRY_SECRET_KEY: 39k9bs(tq&bgyx8h4j6+xdhi6hv%!3ab-48iy*5bo12wmsdih!
       SENTRY_REDIS_HOST: redis
       SENTRY_POSTGRES_HOST: pg

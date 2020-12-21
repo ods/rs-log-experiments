@@ -13,7 +13,9 @@ start-graylog:
 # Before the 1st start of Sentry:
 #   * Execute `make setup-sentry`
 
-setup-sentry: wait-pg
+setup-sentry:
+	docker-compose up -d pg
+	sleep 3
 	docker-compose exec pg createdb sentry
 	docker-compose run --rm sentry upgrade --noinput
 	docker-compose run --rm sentry createuser --no-input --email sentry --password sentry
