@@ -57,7 +57,7 @@ fn main() -> anyhow::Result<()> {
 
     let logger = slog::Logger::root(
         drain_tee.filter_level(Level::Info).fuse(),
-        slog::o!("version" => &*APP_VERSION),
+        slog::o!("version" => APP_VERSION),
     );
     let log_guard = slog_scope::set_global_logger(logger);
 
