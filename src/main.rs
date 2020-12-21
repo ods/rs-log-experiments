@@ -1,6 +1,9 @@
+use lazy_static::lazy_static;
+use regex::Regex;
 use slog::{Drain, Fuse, Level};
 use slog_async::Async;
 use slog_gelf::Gelf;
+use std::string::String;
 
 struct DrainTee(Vec<Fuse<Async>>);
 
@@ -46,6 +49,23 @@ impl Drain for DrainTee {
     }
 }
 
+lazy_static! {
+    static ref APP_VERSION: String = Regex::new("-(?P<n_commits>[0-9]+)-g")
+        .unwrap()
+        .replace(
+            git_version::git_version!(
+                args = [
+                    "--always",
+                    "--match=*.*.*",
+                    "--first-parent",
+                    "--dirty"
+                ]
+            ),
+            "+$n_commits+",
+        )
+        .to_string();
+}
+
 fn main() -> anyhow::Result<()> {
     std::env::set_var("RUST_BACKTRACE", "1");
     std::env::set_var("GRAYLOG_URL", "localhost:12201");
@@ -55,7 +75,7 @@ fn main() -> anyhow::Result<()> {
 
     let logger = slog::Logger::root(
         drain_tee.filter_level(Level::Info).fuse(),
-        slog::o!(),
+        slog::o!("version" => &*APP_VERSION),
     );
     let log_guard = slog_scope::set_global_logger(logger);
 
