@@ -7,7 +7,7 @@ use logging::DrainTee;
 fn get_var(name: &str) -> Option<String> {
     std::env::var_os(name)
         .map(|value| value.into_string().unwrap())
-        .filter(String::is_empty)
+        .filter(|value| !value.is_empty())
 }
 
 fn main() -> anyhow::Result<()> {
