@@ -659,7 +659,6 @@ dependencies = [
  "anyhow",
  "git-version",
  "hostname",
- "log",
  "regex",
  "sentry",
  "sentry-slog",
@@ -1196,7 +1195,6 @@ dependencies = [
  "sentry-contexts",
  "sentry-core",
  "sentry-panic",
- "sentry-slog",
 ]
 
 [[package]]
