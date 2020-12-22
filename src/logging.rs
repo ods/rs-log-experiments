@@ -9,30 +9,20 @@ use slog_async::Async;
 use slog_gelf::Gelf;
 
 pub struct DrainTee {
+    version: String,
+    environment: String,
     drains: Vec<Fuse<Async>>,
     guards: Vec<Box<dyn Any + Send + Sync + RefUnwindSafe + UnwindSafe>>,
-    version: Option<String>,
-    environment: Option<String>,
 }
 
 impl DrainTee {
-    pub fn default() -> Self {
+    pub fn new(version: &str, environment: &str) -> Self {
         Self {
+            version: version.into(),
+            environment: environment.into(),
             drains: vec![],
             guards: vec![],
-            version: None,
-            environment: None,
         }
-    }
-
-    pub fn version(mut self, value: &str) -> Self {
-        self.version = Some(value.into());
-        self
-    }
-
-    pub fn environment(mut self, value: &str) -> Self {
-        self.environment = Some(value.into());
-        self
     }
 
     pub fn push<D>(&mut self, drain: D)
@@ -60,9 +50,8 @@ impl DrainTee {
         let dsn = url.parse()?;
         let sentry = sentry::init(sentry::ClientOptions {
             dsn: Some(dsn),
-            // FIXME version and environment can be set after `sentry()` call
-            release: self.version.clone().map(Into::into),
-            environment: self.environment.clone().map(Into::into),
+            release: Some(self.version.clone().into()),
+            environment: Some(self.environment.clone().into()),
             max_breadcrumbs: 0,
             ..Default::default()
         });

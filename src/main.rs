@@ -14,9 +14,7 @@ fn main() -> anyhow::Result<()> {
     let environment = std::env::var("ENVIRONMENT")?;
     let graylog_url = std::env::var("GRAYLOG_URL")?;
     let sentry_url = std::env::var("SENTRY_URL")?;
-    let drain_tee = DrainTee::default()
-        .environment(&environment)
-        .version(env!("APP_VERSION"))
+    let drain_tee = DrainTee::new(env!("APP_VERSION"), &environment)
         .term()?
         .graylog(&graylog_url)?
         .sentry(&sentry_url)?;
