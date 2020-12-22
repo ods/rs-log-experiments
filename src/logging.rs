@@ -8,57 +8,73 @@ use slog::{Drain, Fuse};
 use slog_async::Async;
 use slog_gelf::Gelf;
 
+#[derive(Default)]
+pub struct DrainTeeOptions {
+    pub version: Option<String>,
+    pub environment: Option<String>,
+    pub graylog: Option<String>,
+    pub sentry: Option<String>,
+}
+
 pub struct DrainTee {
-    version: String,
-    environment: String,
+    version: Option<String>,
+    environment: Option<String>,
     drains: Vec<Fuse<Async>>,
     guards: Vec<Box<dyn Any + Send + Sync + RefUnwindSafe + UnwindSafe>>,
 }
 
 impl DrainTee {
-    pub fn new(version: &str, environment: &str) -> Self {
-        Self {
-            version: version.into(),
-            environment: environment.into(),
+    pub fn new(options: DrainTeeOptions) -> anyhow::Result<Self> {
+        let mut drain = Self {
+            version: options.version,
+            environment: options.environment,
             drains: vec![],
             guards: vec![],
+        };
+        drain.term()?;
+        if let Some(graylog_url) = options.graylog {
+            drain.graylog(&graylog_url)?;
         }
+        if let Some(sentry_url) = options.sentry {
+            drain.sentry(&sentry_url)?;
+        }
+        Ok(drain)
     }
 
-    pub fn push<D>(&mut self, drain: D)
+    fn push<D>(&mut self, drain: D)
     where
         D: Drain<Err = slog::Never, Ok = ()> + Send + 'static,
     {
         self.drains.push(Async::default(drain).fuse());
     }
 
-    pub fn term(mut self) -> anyhow::Result<Self> {
+    fn term(&mut self) -> anyhow::Result<()> {
         let decorator = slog_term::TermDecorator::new().stderr().build();
         let term_drain = slog_term::FullFormat::new(decorator).build().fuse();
         self.push(term_drain);
-        Ok(self)
+        Ok(())
     }
 
-    pub fn graylog(mut self, url: &str) -> anyhow::Result<Self> {
+    fn graylog(&mut self, url: &str) -> anyhow::Result<()> {
         let host = hostname::get()?;
         let drain = Gelf::new(host.to_str().unwrap(), url)?.fuse();
         self.push(drain);
-        Ok(self)
+        Ok(())
     }
 
-    pub fn sentry(mut self, url: &str) -> anyhow::Result<Self> {
+    fn sentry(&mut self, url: &str) -> anyhow::Result<()> {
         let dsn = url.parse()?;
         let sentry = sentry::init(sentry::ClientOptions {
             dsn: Some(dsn),
-            release: Some(self.version.clone().into()),
-            environment: Some(self.environment.clone().into()),
+            release: self.version.clone().map(Into::into),
+            environment: self.environment.clone().map(Into::into),
             max_breadcrumbs: 0,
             ..Default::default()
         });
         self.guards.push(Box::new(sentry));
         let drain = SentryDrain::new(slog::Discard);
         self.push(drain);
-        Ok(self)
+        Ok(())
     }
 }
 
