@@ -1,19 +1,26 @@
-use std::string::String;
+use std::{env, string::String};
 
-use slog::Drain; // Needed for `filter_level()` and `fuse()`
+use slog::Drain; // Needed for `fuse()`
 
 fn get_var(name: &str) -> Option<String> {
-    std::env::var_os(name)
+    env::var_os(name)
         .map(|value| value.into_string().unwrap())
         .filter(|value| !value.is_empty())
 }
 
+mod inner {
+    pub fn log_in_inner() {
+        slog_scope::info!("Hello from inner!");
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     // Pretend these vars came from outside
-    std::env::set_var("RUST_BACKTRACE", "1");
-    std::env::set_var("ENVIRONMENT", "dev");
-    std::env::set_var("GRAYLOG_URL", "localhost:12201");
-    std::env::set_var(
+    env::set_var("RUST_BACKTRACE", "1");
+    env::set_var("ENVIRONMENT", "dev");
+    env::set_var("RUST_LOG", "info,log_experiments::inner=error");
+    env::set_var("GRAYLOG_URL", "localhost:12201");
+    env::set_var(
         "SENTRY_URL",
         "http://185b7a7e069f4ef0983c2467e79683b1@localhost:9001/1",
     );
@@ -22,12 +29,13 @@ fn main() -> anyhow::Result<()> {
     let environment = get_var("ENVIRONMENT").unwrap();
     let drain = logging::setup(logging::LoggingOptions {
         version: Some(env!("APP_VERSION").into()),
+        filters: get_var("RUST_LOG"),
         environment: Some(environment.clone()),
         graylog: get_var("GRAYLOG_URL"),
         sentry: get_var("SENTRY_URL"),
     })?;
     let logger = slog::Logger::root(
-        drain.filter_level(slog::Level::Info).fuse(),
+        drain.fuse(),
         slog::o!(
             "version" => env!("APP_VERSION"),
             "environment" => environment,
@@ -35,7 +43,9 @@ fn main() -> anyhow::Result<()> {
     );
     let log_guard = slog_scope::set_global_logger(logger);
 
-    slog_scope::error!("Hello, slog_scope!");
+    slog_scope::info!("Hello, slog_scope!");
+    slog_scope::error!("Scheiße");
+    inner::log_in_inner();
 
     std::mem::drop(log_guard);
     Ok(())

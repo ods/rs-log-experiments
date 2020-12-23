@@ -1,8 +1,11 @@
-use std::panic::{RefUnwindSafe, UnwindSafe};
-use std::string::String;
+use std::{
+    panic::{RefUnwindSafe, UnwindSafe},
+    string::String,
+    sync::Mutex,
+};
 
 use sentry_slog::SentryDrain;
-use slog::{Drain, Fuse};
+use slog::Drain;
 use slog_async::Async;
 use slog_gelf::Gelf;
 
@@ -37,7 +40,7 @@ where
 /// Drain that duplicates log record into several subdrains
 #[derive(Default)]
 pub struct DrainTee {
-    drains: Vec<Fuse<Async>>,
+    drains: Vec<Async>,
 }
 
 impl DrainTee {
@@ -45,13 +48,13 @@ impl DrainTee {
     where
         D: Drain<Err = slog::Never, Ok = ()> + Send + 'static,
     {
-        self.drains.push(Async::default(drain).fuse());
+        self.drains.push(Async::default(drain));
     }
 }
 
 impl Drain for DrainTee {
     type Ok = ();
-    type Err = slog::Never;
+    type Err = <Async as Drain>::Err;
 
     fn log(
         &self,
@@ -68,11 +71,16 @@ impl Drain for DrainTee {
 pub struct LoggingOptions {
     pub version: Option<String>,
     pub environment: Option<String>,
+    pub filters: Option<String>,
     pub graylog: Option<String>,
     pub sentry: Option<String>,
 }
 
-pub fn setup(options: LoggingOptions) -> anyhow::Result<DrainTee> {
+const DEFAULT_FILTERS: &str = "info";
+
+pub fn setup(
+    options: LoggingOptions,
+) -> anyhow::Result<Mutex<slog_envlogger::EnvLogger<DrainTee>>> {
     let mut tee = DrainTee::default();
 
     tee.push(
@@ -103,5 +111,9 @@ pub fn setup(options: LoggingOptions) -> anyhow::Result<DrainTee> {
         });
     }
 
-    Ok(tee)
+    let filtered = slog_envlogger::LogBuilder::new(tee)
+        .parse(options.filters.as_deref().unwrap_or(DEFAULT_FILTERS))
+        .build();
+
+    Ok(Mutex::new(filtered))
 }
