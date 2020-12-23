@@ -1,5 +1,3 @@
-use std::any::Any;
-use std::boxed::Box;
 use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::string::String;
 
@@ -16,11 +14,39 @@ pub struct DrainTeeOptions {
     pub sentry: Option<String>,
 }
 
+/// Wrap drain along with guard to be dropped when drain is dropped
+pub struct DrainWithGuard<D, G>
+where
+    D: Drain,
+    G: Send + Sync + RefUnwindSafe + UnwindSafe,
+{
+    pub drain: D,
+    #[allow(dead_code)]
+    pub guard: G,
+}
+
+impl<D, G> Drain for DrainWithGuard<D, G>
+where
+    D: Drain,
+    G: Send + Sync + RefUnwindSafe + UnwindSafe,
+{
+    type Ok = D::Ok;
+    type Err = D::Err;
+
+    fn log(
+        &self,
+        record: &slog::Record,
+        values: &slog::OwnedKVList,
+    ) -> Result<Self::Ok, Self::Err> {
+        self.drain.log(record, values)
+    }
+}
+
+/// Drain that duplicates log record into several subdrains
 pub struct DrainTee {
     version: Option<String>,
     environment: Option<String>,
     drains: Vec<Fuse<Async>>,
-    guards: Vec<Box<dyn Any + Send + Sync + RefUnwindSafe + UnwindSafe>>,
 }
 
 impl DrainTee {
@@ -29,7 +55,6 @@ impl DrainTee {
             version: options.version,
             environment: options.environment,
             drains: vec![],
-            guards: vec![],
         };
         drain.term()?;
         if let Some(graylog_url) = options.graylog {
@@ -71,9 +96,10 @@ impl DrainTee {
             max_breadcrumbs: 0,
             ..Default::default()
         });
-        self.guards.push(Box::new(sentry));
-        let drain = SentryDrain::new(slog::Discard);
-        self.push(drain);
+        self.push(DrainWithGuard {
+            drain: SentryDrain::new(slog::Discard),
+            guard: sentry,
+        });
         Ok(())
     }
 }
