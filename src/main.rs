@@ -2,8 +2,6 @@ use std::string::String;
 
 use slog::Drain; // Needed for `filter_level()` and `fuse()`
 
-use logging::{DrainTee, DrainTeeOptions};
-
 fn get_var(name: &str) -> Option<String> {
     std::env::var_os(name)
         .map(|value| value.into_string().unwrap())
@@ -22,15 +20,14 @@ fn main() -> anyhow::Result<()> {
 
     // Normal application flow starts here
     let environment = get_var("ENVIRONMENT").unwrap();
-    let drain_tee = DrainTee::new(DrainTeeOptions {
+    let drain = logging::setup(logging::LoggingOptions {
         version: Some(env!("APP_VERSION").into()),
         environment: Some(environment.clone()),
         graylog: get_var("GRAYLOG_URL"),
         sentry: get_var("SENTRY_URL"),
-        ..Default::default() // FIXME Causes clippy::needless_update
     })?;
     let logger = slog::Logger::root(
-        drain_tee.filter_level(slog::Level::Info).fuse(),
+        drain.filter_level(slog::Level::Info).fuse(),
         slog::o!(
             "version" => env!("APP_VERSION"),
             "environment" => environment,
