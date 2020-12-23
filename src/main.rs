@@ -1,6 +1,7 @@
 use std::{env, string::String};
 
-use slog::Drain; // Needed for `fuse()`
+use anyhow::Context; // For `context()`
+use slog::Drain; // For `fuse()`
 
 fn get_var(name: &str) -> Option<String> {
     env::var_os(name)
@@ -27,13 +28,14 @@ fn main() -> anyhow::Result<()> {
 
     // Normal application flow starts here
     let environment = get_var("ENVIRONMENT").unwrap();
-    let drain = logging::setup(logging::LoggingOptions {
+    let options = logging::LoggingOptions {
         version: Some(env!("APP_VERSION").into()),
         filters: get_var("RUST_LOG"),
         environment: Some(environment.clone()),
         graylog: get_var("GRAYLOG_URL"),
         sentry: get_var("SENTRY_URL"),
-    })?;
+    };
+    let drain = logging::setup(options).context("Failed to setup logging")?;
     let logger = slog::Logger::root(
         drain.fuse(),
         slog::o!(

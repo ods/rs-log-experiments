@@ -4,6 +4,7 @@ use std::{
     sync::Mutex,
 };
 
+use anyhow::Context; // For `context()`
 use sentry_slog::SentryDrain;
 use slog::Drain;
 use slog_async::Async;
@@ -93,13 +94,23 @@ pub fn setup(
 
     if let Some(graylog_url) = options.graylog {
         tee.push(
-            Gelf::new(hostname::get()?.to_str().unwrap(), &graylog_url)?.fuse(),
+            Gelf::new(
+                hostname::get()
+                    .context("Failed to get hostname")?
+                    .to_str()
+                    .unwrap(),
+                &graylog_url,
+            )
+            .context("Failed to setup graylog")?
+            .fuse(),
         );
     }
 
     if let Some(sentry_url) = options.sentry {
         let sentry = sentry::init(sentry::ClientOptions {
-            dsn: Some(sentry_url.parse()?),
+            dsn: Some(
+                sentry_url.parse().context("Failed to parse sentry DSN")?,
+            ),
             release: options.version.clone().map(Into::into),
             environment: options.environment.clone().map(Into::into),
             max_breadcrumbs: 0,
