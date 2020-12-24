@@ -1,13 +1,8 @@
-use std::{env, string::String};
+use std::env;
 
 use anyhow::Context; // For `context()`
-use slog::Drain; // For `fuse()`
 
-fn get_var(name: &str) -> Option<String> {
-    env::var_os(name)
-        .map(|value| value.into_string().unwrap())
-        .filter(|value| !value.is_empty())
-}
+pub(crate) mod logging;
 
 mod inner {
     pub fn log_in_inner() {
@@ -27,24 +22,8 @@ fn main() -> anyhow::Result<()> {
     );
 
     // Normal application flow starts here
-    let environment =
-        get_var("ENVIRONMENT").unwrap_or_else(|| "unknown".into());
-    let options = logging::LoggingOptions {
-        version: Some(env!("APP_VERSION").into()),
-        filters: get_var("RUST_LOG"),
-        environment: Some(environment.clone()),
-        graylog: get_var("GRAYLOG_URL"),
-        sentry: get_var("SENTRY_URL"),
-    };
-    let drain = logging::setup(options).context("Failed to setup logging")?;
-    let logger = slog::Logger::root(
-        drain.fuse(),
-        slog::o!(
-            "version" => env!("APP_VERSION"),
-            "environment" => environment,
-        ),
-    );
-    let log_guard = slog_scope::set_global_logger(logger);
+    let log_guard = logging::setup_from_env(Some(env!("APP_VERSION")))
+        .context("Failed to setup logging")?;
 
     slog_scope::info!("Hello, slog_scope!");
     slog_scope::error!("Scheiße");

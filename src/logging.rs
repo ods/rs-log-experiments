@@ -81,7 +81,7 @@ const DEFAULT_FILTERS: &str = "info";
 
 pub fn setup(
     options: LoggingOptions,
-) -> anyhow::Result<Mutex<slog_envlogger::EnvLogger<DrainTee>>> {
+) -> anyhow::Result<slog_scope::GlobalLoggerGuard> {
     let mut tee = DrainTee::default();
 
     tee.push(
@@ -126,5 +126,33 @@ pub fn setup(
         .parse(options.filters.as_deref().unwrap_or(DEFAULT_FILTERS))
         .build();
 
-    Ok(Mutex::new(filtered))
+    let logger = slog::Logger::root(
+        Mutex::new(filtered).fuse(),
+        slog::o!(
+            "version" => options.version,
+            "environment" => options.environment,
+        ),
+    );
+    let log_guard = slog_scope::set_global_logger(logger);
+
+    Ok(log_guard)
+}
+
+fn get_var(name: &str) -> Option<String> {
+    std::env::var_os(name)
+        .map(|value| value.into_string().unwrap())
+        .filter(|value| !value.is_empty())
+}
+
+pub fn setup_from_env(
+    version: Option<&'static str>,
+) -> anyhow::Result<slog_scope::GlobalLoggerGuard> {
+    let options = LoggingOptions {
+        version: version.map(Into::into),
+        filters: get_var("RUST_LOG"),
+        environment: get_var("ENVIRONMENT").or_else(|| Some("unknown".into())),
+        graylog: get_var("GRAYLOG_URL"),
+        sentry: get_var("SENTRY_URL"),
+    };
+    setup(options).context("Failed to setup logging")
 }
