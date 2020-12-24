@@ -27,7 +27,8 @@ fn main() -> anyhow::Result<()> {
     );
 
     // Normal application flow starts here
-    let environment = get_var("ENVIRONMENT").unwrap();
+    let environment =
+        get_var("ENVIRONMENT").unwrap_or_else(|| "unknown".into());
     let options = logging::LoggingOptions {
         version: Some(env!("APP_VERSION").into()),
         filters: get_var("RUST_LOG"),
@@ -48,6 +49,9 @@ fn main() -> anyhow::Result<()> {
     slog_scope::info!("Hello, slog_scope!");
     slog_scope::error!("Scheiße");
     inner::log_in_inner();
+    std::thread::spawn(|| panic!("Stirb!!!"))
+        .join()
+        .expect_err("Failed to panic");
 
     std::mem::drop(log_guard);
     Ok(())
