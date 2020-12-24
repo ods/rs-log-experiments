@@ -26,9 +26,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.35"
+version = "1.0.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c0df63cb2955042487fad3aefd2c6e3ae7389ac5dc1beb28921de0b69f779d4"
+checksum = "68803225a7b13e47191bab76f2687382b60d259e8cf37f6e1893658b84bb9479"
 
 [[package]]
 name = "arc-swap"
@@ -653,12 +653,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "log-panics"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae0136257df209261daa18d6c16394757c63e032e27aafd8b07788b051082bef"
+dependencies = [
+ "log",
+]
+
+[[package]]
 name = "log_experiments"
 version = "0.0.0"
 dependencies = [
  "anyhow",
  "git-version",
  "hostname",
+ "log",
+ "log-panics",
  "regex",
  "sentry",
  "sentry-slog",
@@ -667,6 +678,7 @@ dependencies = [
  "slog-envlogger",
  "slog-gelf",
  "slog-scope",
+ "slog-stdlog",
  "slog-term",
 ]
 
@@ -956,9 +968,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.7"
+version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa563d17ecb180e500da1cfd2b028310ac758de548efdd203e18f283af693f37"
+checksum = "991431c3519a3f36861882da93630ce66b52918dcf1b8e2fd66b397fc96f28df"
 dependencies = [
  "proc-macro2",
 ]
@@ -1195,7 +1207,6 @@ dependencies = [
  "sentry-backtrace",
  "sentry-contexts",
  "sentry-core",
- "sentry-panic",
 ]
 
 [[package]]
@@ -1237,16 +1248,6 @@ dependencies = [
  "sentry-types",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "sentry-panic"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04ee338d8292fcdcfb032929c9f53bc0dfac8e0b9d3096be79ceee96818851ed"
-dependencies = [
- "sentry-backtrace",
- "sentry-core",
 ]
 
 [[package]]
@@ -1444,9 +1445,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.54"
+version = "1.0.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a2af957a63d6bd42255c359c93d9bfdb97076bd3b820897ce55ffbfbf107f44"
+checksum = "a571a711dddd09019ccc628e1b17fe87c59b09d513c06c026877aa708334f37a"
 dependencies = [
  "proc-macro2",
  "quote",

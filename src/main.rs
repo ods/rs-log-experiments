@@ -45,6 +45,8 @@ fn main() -> anyhow::Result<()> {
         ),
     );
     let log_guard = slog_scope::set_global_logger(logger);
+    slog_stdlog::init()?;
+    log_panics::init();
 
     slog_scope::info!("Hello, slog_scope!");
     slog_scope::error!("Scheiße");
