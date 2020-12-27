@@ -17,6 +17,7 @@ slog-gelf = "0"
 slog-scope = "4"
 slog-term = "2"
 slog-envlogger = "2"
+thiserror = "1"
 
 [build-dependencies]
 git-version = "0"

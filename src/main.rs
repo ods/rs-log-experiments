@@ -2,6 +2,7 @@ use std::env;
 
 use anyhow::Context; // For `context()`
 
+pub(crate) mod environ;
 pub(crate) mod logging;
 
 mod inner {

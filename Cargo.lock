@@ -668,6 +668,7 @@ dependencies = [
  "slog-gelf",
  "slog-scope",
  "slog-term",
+ "thiserror",
 ]
 
 [[package]]
