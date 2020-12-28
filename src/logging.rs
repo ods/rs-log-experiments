@@ -10,6 +10,8 @@ use slog::Drain;
 use slog_async::Async;
 use slog_gelf::Gelf;
 
+use crate::environ;
+
 /// Wrap drain along with guard to be dropped when wrapper is dropped
 pub struct DrainWithGuard<D, G>
 where
@@ -138,21 +140,16 @@ pub fn setup(
     Ok(log_guard)
 }
 
-fn get_var(name: &str) -> Option<String> {
-    std::env::var_os(name)
-        .map(|value| value.into_string().unwrap())
-        .filter(|value| !value.is_empty())
-}
-
 pub fn setup_from_env(
     version: Option<&'static str>,
 ) -> anyhow::Result<slog_scope::GlobalLoggerGuard> {
     let options = LoggingOptions {
         version: version.map(Into::into),
-        filters: get_var("RUST_LOG"),
-        environment: get_var("ENVIRONMENT").or_else(|| Some("unknown".into())),
-        graylog: get_var("GRAYLOG_URL"),
-        sentry: get_var("SENTRY_URL"),
+        filters: environ::get("RUST_LOG")?,
+        environment: environ::get("ENVIRONMENT")?
+            .or_else(|| Some("unknown".into())),
+        graylog: environ::get("GRAYLOG_URL")?,
+        sentry: environ::get("SENTRY_URL")?,
     };
     setup(options).context("Failed to setup logging")
 }
